@@ -16,6 +16,11 @@ func main() {
 	http.HandleFunc("/declineRequest", declineRequestHandler)
 	http.HandleFunc("/unfriend", unfriendHandler)
 	http.HandleFunc("/addInterest", addInterestHandler)
-	http.ListenAndServe("localhost:8080", nil)
+	http.HandleFunc("/removeInterest", removeInterestHandler)
+	http.HandleFunc("/createForum", createForumHandler)
+	http.HandleFunc("/addPost", addPostHandler)
+	http.HandleFunc("/addComment", addCommentHandler)
+	http.HandleFunc("/recommendForums", recommendForumHandler)
 
+	http.ListenAndServe("localhost:8080", nil)
 }

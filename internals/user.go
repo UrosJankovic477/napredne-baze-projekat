@@ -26,11 +26,6 @@ type SessionToken struct {
 type AccountCredentials struct {
 	Username     string
 	PasswordHash string
-	Email        string
-}
-
-type Forum struct {
-	Name string
 }
 
 func Initialize() {
@@ -41,26 +36,36 @@ func Initialize() {
 		panic(err)
 	}
 	ctx = context.Background()
+	_, err = doQuery("CREATE CONSTRAINT unique_username IF NOT EXISTS FOR (usr:AccountCredentials) REQUIRE usr.Username IS UNIQUE ", nil)
+	if err != nil {
+		panic(err)
+	}
+	_, err = doQuery("CREATE CONSTRAINT unique_forum_name IF NOT EXISTS FOR (forum:Forum) REQUIRE forum.Name IS UNIQUE ", nil)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func doQuery(query string, params map[string]any) (*neo4j.EagerResult, error) {
 	return neo4j.ExecuteQuery(ctx, driver, query, params, neo4j.EagerResultTransformer)
 }
 
-func CreateAccount(username string, password string, email string) error {
+func CreateAccount(username string, password string) error {
 	hash, err := argon2id.CreateHash(password, argon2id.DefaultParams)
 	if err != nil {
 		return err
 	}
 
 	_, err = doQuery(
-		"CREATE (n:AccountCredentials { Username: $Username, PasswordHash: $PasswordHash, Email: $Email}) RETURN n",
+		"CREATE (n:AccountCredentials { Username: $Username, PasswordHash: $PasswordHash}) RETURN n",
 		map[string]any{
-			"Username":     username,
+			"Username":     strings.ToLower(username),
 			"PasswordHash": hash,
-			"Email":        email,
 		})
 	if err != nil {
+		if strings.Contains(err.Error(), "ConstraintValidationFailed") {
+			return errors.New("Account with that username already exists.")
+		}
 		return err
 	}
 	return nil
@@ -104,7 +109,10 @@ func LoginUser(username string, password string) (string, error) {
 		return "", err
 	}
 
-	user, _ := FirstOrDefault(res)
+	user, ok := FirstOrDefault(res)
+	if !ok {
+		return "", errors.New("User not found")
+	}
 	passwordHash := user.Props["PasswordHash"].(string)
 
 	correctPassword, err := argon2id.ComparePasswordAndHash(password, passwordHash)
@@ -191,8 +199,9 @@ func SendFriendRequest(token string, friendname string) (int, error) {
 	}
 	_, err = doQuery("MATCH (usr:AccountCredentials) WHERE ELEMENTID(usr) = $Id "+
 		"MATCH (friend:AccountCredentials) WHERE friend.Username = $Username "+
-		"MATCH (usr)-[r:FRIEND]-(friend) "+
-		"WHERE r is null and usr <> friend "+
+		"AND NOT (usr)-[:FRIEND]-(friend) "+
+		"AND NOT (usr)-[:REQUESTS_FRENDSHIP]-(friend) "+
+		"AND usr <> friend "+
 		"MERGE (usr)-[:REQUESTS_FRENDSHIP]->(friend)", map[string]any{
 		"Id":       user_node.ElementId,
 		"Username": friendname,
