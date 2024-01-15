@@ -19,8 +19,13 @@ func main() {
 	http.HandleFunc("/removeInterest", removeInterestHandler)
 	http.HandleFunc("/createForum", createForumHandler)
 	http.HandleFunc("/addPost", addPostHandler)
+	http.HandleFunc("/getPost", getPostHandler)
 	http.HandleFunc("/addComment", addCommentHandler)
 	http.HandleFunc("/recommendForums", recommendForumHandler)
+	http.HandleFunc("/recommendFriends", recommendFriendHandler)
+	http.HandleFunc("/getPostsFromForum", getPostsFromForumHandler)
+	http.HandleFunc("/getCommentsFromPost", getCommentsFromPostHandler)
+	http.HandleFunc("/getPosts", getPostsHandler)
 
 	http.ListenAndServe("localhost:8080", nil)
 }

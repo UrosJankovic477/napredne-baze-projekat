@@ -13,10 +13,12 @@ import (
 	"github.com/alexedwards/argon2id"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/dbtype"
+	"github.com/redis/go-redis/v9"
 )
 
 var ctx context.Context
 var driver neo4j.DriverWithContext
+var expirationTime = 240.0 // 10 dana sad dok radimo, 1 dan u finalnoj verziji
 
 type SessionToken struct {
 	Token   string
@@ -28,7 +30,15 @@ type AccountCredentials struct {
 	PasswordHash string
 }
 
+var rdb *redis.Client
+
 func Initialize() {
+	rdb = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+
 	dbUri := "neo4j://localhost"
 	var err error
 	driver, err = neo4j.NewDriverWithContext(dbUri, neo4j.BasicAuth(dbName, dbPassword, ""))
@@ -78,7 +88,7 @@ func GenerateToken() (SessionToken, error) {
 		return SessionToken{}, err
 	}
 
-	return SessionToken{base64.StdEncoding.EncodeToString(sessionToken), time.Now().Unix() + int64(time.Hour.Seconds()*24)}, nil
+	return SessionToken{base64.StdEncoding.EncodeToString(sessionToken), time.Now().Unix() + int64(time.Hour.Seconds()*expirationTime)}, nil
 }
 
 func FirstOrDefault(eagerResult *neo4j.EagerResult) (dbtype.Node, bool) {

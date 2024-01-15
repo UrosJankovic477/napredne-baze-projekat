@@ -334,12 +334,167 @@ func recommendForumHandler(writer http.ResponseWriter, reqptr *http.Request) {
 	}
 	json.Unmarshal(body, &deserialized)
 
-	forums, status, err := internals.RecommendForums(deserialized["UserToken"])
+	recommendations, status, err := internals.RecommendForums(deserialized["UserToken"])
 	if err != nil {
 		writer.WriteHeader(status)
 		log.Println(err)
 	}
-	to_json, err := json.Marshal(forums)
+	to_json, err := json.Marshal(recommendations)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	writer.Write(to_json)
+}
+
+func recommendFriendHandler(writer http.ResponseWriter, reqptr *http.Request) {
+	if reqptr.Method != "POST" {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	body, err := io.ReadAll(reqptr.Body)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	deserialized := map[string]string{
+		"UserToken": "",
+	}
+	json.Unmarshal(body, &deserialized)
+
+	recommendations, status, err := internals.RecommendFriends(deserialized["UserToken"])
+	if err != nil {
+		writer.WriteHeader(status)
+		log.Println(err)
+	}
+	to_json, err := json.Marshal(recommendations)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	writer.Write(to_json)
+}
+
+func getPostHandler(writer http.ResponseWriter, reqptr *http.Request) {
+	if reqptr.Method != "GET" {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	body, err := io.ReadAll(reqptr.Body)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	deserialized := map[string]string{
+		"UUID": "",
+	}
+	json.Unmarshal(body, &deserialized)
+
+	post, err := internals.GetFromRedis(deserialized["UUID"], true)
+	if err != nil {
+		writer.WriteHeader(http.StatusNotFound)
+		log.Println(err)
+	}
+	to_json, err := json.Marshal(post)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	writer.Write(to_json)
+}
+
+func getPostsFromForumHandler(writer http.ResponseWriter, reqptr *http.Request) {
+	if reqptr.Method != "GET" {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	body, err := io.ReadAll(reqptr.Body)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	deserialized := map[string]any{
+		"ForumName": "",
+		"Limit":     0,
+		"Offset":    0,
+	}
+	json.Unmarshal(body, &deserialized)
+
+	posts, status, err := internals.GetMultiplePostsFromForum(
+		deserialized["ForumName"].(string),
+		int(deserialized["Limit"].(float64)),
+		int(deserialized["Offset"].(float64)))
+	if err != nil {
+		writer.WriteHeader(status)
+		log.Println(err)
+	}
+	to_json, err := json.Marshal(posts)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	writer.Write(to_json)
+}
+
+func getCommentsFromPostHandler(writer http.ResponseWriter, reqptr *http.Request) {
+	if reqptr.Method != "GET" {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	body, err := io.ReadAll(reqptr.Body)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	deserialized := map[string]any{
+		"ForumName": "",
+		"Limit":     0,
+		"Offset":    0,
+	}
+	json.Unmarshal(body, &deserialized)
+
+	comments, status, err := internals.GetCommentsFromPost(
+		deserialized["PostUUID"].(string),
+		int(deserialized["Limit"].(float64)),
+		int(deserialized["Offset"].(float64)))
+	if err != nil {
+		writer.WriteHeader(status)
+		log.Println(err)
+	}
+	to_json, err := json.Marshal(comments)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	writer.Write(to_json)
+}
+
+func getPostsHandler(writer http.ResponseWriter, reqptr *http.Request) {
+	if reqptr.Method != "GET" {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	body, err := io.ReadAll(reqptr.Body)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	deserialized := map[string]any{
+		"Token":  "",
+		"Limit":  0,
+		"Offset": 0,
+	}
+	json.Unmarshal(body, &deserialized)
+
+	posts, status, err := internals.GetPosts(
+		deserialized["Token"].(string),
+		int(deserialized["Limit"].(float64)),
+		int(deserialized["Offset"].(float64)))
+	if err != nil {
+		writer.WriteHeader(status)
+		log.Println(err)
+	}
+	to_json, err := json.Marshal(posts)
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
 		log.Println(err)

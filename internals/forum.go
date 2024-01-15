@@ -74,6 +74,10 @@ func AddPost(token string, forum_name string, post_title string, post_body strin
 		"UUID":      UUID,
 		"TimeStamp": time.Now().Unix(),
 	})
+	err = AddToRedis(UUID, post_body, true)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -96,6 +100,10 @@ func CommentPost(token string, postUUID string, post_body string) (int, error) {
 		"UUID":      UUID,
 		"TimeStamp": time.Now().Unix(),
 	})
+	err = AddToRedis(UUID, post_body, false)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
