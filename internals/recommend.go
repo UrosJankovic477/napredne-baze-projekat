@@ -140,14 +140,14 @@ func RecommendFriends(token string) ([]FriendRecommendation, int, error) {
 	if err != nil {
 		return nil, http.StatusInternalServerError, err
 	}
-	keys := make([]string, 0)
+	keys := make(map[string]bool, 0)
 	for k := range rec_by_interests {
-		keys = append(keys, k)
+		keys[k] = true
 	}
 	for k := range rec_by_friends {
-		keys = append(keys, k)
+		keys[k] = true
 	}
-	for _, friend_name := range keys {
+	for friend_name := range keys {
 		rec_by_int, in_rec_by_int := rec_by_interests[friend_name]
 		rec_by_fren, in_rec_by_fren := rec_by_friends[friend_name]
 		var rec = FriendRecommendation{}
