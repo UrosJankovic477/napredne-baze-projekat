@@ -1,7 +1,7 @@
 package internals
 
 import (
-	"context"
+	
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
@@ -13,11 +13,10 @@ import (
 	"github.com/alexedwards/argon2id"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/dbtype"
-	"github.com/redis/go-redis/v9"
+	
 )
 
-var ctx context.Context
-var driver neo4j.DriverWithContext
+
 var expirationTime = 240.0 // 10 dana sad dok radimo, 1 dan u finalnoj verziji
 
 type SessionToken struct {
@@ -30,31 +29,7 @@ type AccountCredentials struct {
 	PasswordHash string
 }
 
-var rdb *redis.Client
 
-func Initialize() {
-	rdb = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
-
-	dbUri := "neo4j://localhost"
-	var err error
-	driver, err = neo4j.NewDriverWithContext(dbUri, neo4j.BasicAuth(dbName, dbPassword, ""))
-	if err != nil {
-		panic(err)
-	}
-	ctx = context.Background()
-	_, err = doQuery("CREATE CONSTRAINT unique_username IF NOT EXISTS FOR (usr:AccountCredentials) REQUIRE usr.Username IS UNIQUE ", nil)
-	if err != nil {
-		panic(err)
-	}
-	_, err = doQuery("CREATE CONSTRAINT unique_forum_name IF NOT EXISTS FOR (forum:Forum) REQUIRE forum.Name IS UNIQUE ", nil)
-	if err != nil {
-		panic(err)
-	}
-}
 
 func doQuery(query string, params map[string]any) (*neo4j.EagerResult, error) {
 	return neo4j.ExecuteQuery(ctx, driver, query, params, neo4j.EagerResultTransformer)

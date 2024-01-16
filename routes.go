@@ -501,3 +501,17 @@ func getPostsHandler(writer http.ResponseWriter, reqptr *http.Request) {
 	}
 	writer.Write(to_json)
 }
+
+func makeChatRoomHandler(writer http.ResponseWriter, reqptr *http.Request) {
+	if reqptr.Method != "POST" {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	UUID := internals.MakeChatRoom()
+	to_json, err := json.Marshal(UUID)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	writer.Write(to_json)
+}

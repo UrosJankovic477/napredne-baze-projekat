@@ -3,29 +3,39 @@ package main
 import (
 	"napredne_baze_podataka/internals"
 	"net/http"
+
+	"github.com/philippseith/signalr"
 )
 
 func main() {
+	internals.Hub = internals.ChatHub{}
 	internals.Initialize()
 
-	http.HandleFunc("/register", registerHandler)
-	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/logout", logoutHandler)
-	http.HandleFunc("/friendRequest", friendRequestHandler)
-	http.HandleFunc("/acceptRequest", acceptRequestHandler)
-	http.HandleFunc("/declineRequest", declineRequestHandler)
-	http.HandleFunc("/unfriend", unfriendHandler)
-	http.HandleFunc("/addInterest", addInterestHandler)
-	http.HandleFunc("/removeInterest", removeInterestHandler)
-	http.HandleFunc("/createForum", createForumHandler)
-	http.HandleFunc("/addPost", addPostHandler)
-	http.HandleFunc("/getPost", getPostHandler)
-	http.HandleFunc("/addComment", addCommentHandler)
-	http.HandleFunc("/recommendForums", recommendForumHandler)
-	http.HandleFunc("/recommendFriends", recommendFriendHandler)
-	http.HandleFunc("/getPostsFromForum", getPostsFromForumHandler)
-	http.HandleFunc("/getCommentsFromPost", getCommentsFromPostHandler)
-	http.HandleFunc("/getPosts", getPostsHandler)
+	router := http.NewServeMux()
 
-	http.ListenAndServe("localhost:8080", nil)
+	router.HandleFunc("/api/register", registerHandler)
+	router.HandleFunc("/api/login", loginHandler)
+	router.HandleFunc("/api/logout", logoutHandler)
+	router.HandleFunc("/api/friendRequest", friendRequestHandler)
+	router.HandleFunc("/api/acceptRequest", acceptRequestHandler)
+	router.HandleFunc("/api/declineRequest", declineRequestHandler)
+	router.HandleFunc("/api/unfriend", unfriendHandler)
+	router.HandleFunc("/api/addInterest", addInterestHandler)
+	router.HandleFunc("/api/removeInterest", removeInterestHandler)
+	router.HandleFunc("/api/createForum", createForumHandler)
+	router.HandleFunc("/api/addPost", addPostHandler)
+	router.HandleFunc("/api/getPost", getPostHandler)
+	router.HandleFunc("/api/addComment", addCommentHandler)
+	router.HandleFunc("/api/recommendForums", recommendForumHandler)
+	router.HandleFunc("/api/recommendFriends", recommendFriendHandler)
+	router.HandleFunc("/api/getPostsFromForum", getPostsFromForumHandler)
+	router.HandleFunc("/api/getCommentsFromPost", getCommentsFromPostHandler)
+	router.HandleFunc("/api/getPosts", getPostsHandler)
+	router.HandleFunc("/api/makeChatRoom", makeChatRoomHandler)
+
+	router.Handle("/", http.FileServer(http.Dir("wwwroot")))
+
+	internals.Server.MapHTTP(signalr.WithHTTPServeMux(router), "/api/chat")
+
+	http.ListenAndServe("localhost:8080", router)
 }
