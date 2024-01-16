@@ -502,16 +502,76 @@ func getPostsHandler(writer http.ResponseWriter, reqptr *http.Request) {
 	writer.Write(to_json)
 }
 
+type ChatRoomReqBody struct {
+	Token string
+	Name  string
+	Users []string
+}
+
 func makeChatRoomHandler(writer http.ResponseWriter, reqptr *http.Request) {
 	if reqptr.Method != "POST" {
 		writer.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	UUID := internals.MakeChatRoom()
-	to_json, err := json.Marshal(UUID)
+	body, err := io.ReadAll(reqptr.Body)
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
 		log.Println(err)
 	}
+	deserialized := ChatRoomReqBody{}
+	json.Unmarshal(body, &deserialized)
+
+	status, err := internals.MakeChatroomNode(
+		deserialized.Token,
+		deserialized.Name,
+		deserialized.Users)
+
+	writer.WriteHeader(status)
+}
+
+func joinChatRoomHandler(writer http.ResponseWriter, reqptr *http.Request) {
+	if reqptr.Method != "POST" {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	body, err := io.ReadAll(reqptr.Body)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	deserialized := map[string]any{
+		"User": "",
+		"UUID": "",
+	}
+	json.Unmarshal(body, &deserialized)
+	status, err := internals.JoinChatroom(deserialized["User"].(string), deserialized["UUID"].(string))
+	writer.WriteHeader(status)
+}
+
+func getUsersChatroomsHandler(writer http.ResponseWriter, reqptr *http.Request) {
+	if reqptr.Method != "GET" {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	body, err := io.ReadAll(reqptr.Body)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	deserialized := map[string]any{
+		"Token": "",
+	}
+	json.Unmarshal(body, &deserialized)
+	chatrooms, status, err := internals.GetUsersChatrooms(deserialized["Token"].(string))
+
+	to_json, err := json.Marshal(chatrooms)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+
+	writer.WriteHeader(status)
 	writer.Write(to_json)
 }

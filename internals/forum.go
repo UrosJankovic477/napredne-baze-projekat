@@ -109,3 +109,42 @@ func CommentPost(token string, postUUID string, post_body string) (int, error) {
 	}
 	return http.StatusOK, nil
 }
+
+func JoinChatroom(user string, UUID string) (int, error) {
+	_, err := doQuery("MATCH (usr) WHERE usr.Username = %user "+
+		"MATCH (cr:Chatroom) WHERE cr.UUID = $UUID "+
+		"MERGE (usr)-[:ACTIVE]->(cr)", map[string]any{
+		"Id":   user,
+		"UUID": UUID,
+	})
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+	return http.StatusOK, nil
+}
+
+func MakeChatroomNode(token string, name string, users []string) (int, error) {
+	user_node, status, err := GetUserFromToken(token)
+	if err != nil {
+		return status, err
+	}
+
+	UUID := MakeChatRoom()
+
+	_, err = doQuery("CREATE (chatroom:Chatroom{UUID: $UUID, Name: $Name}) "+
+		"WITH chatroom MATCH (usr) WHERE usr.Username IN $Users "+
+		"MERGE (usr)-[:IN_CHATROOM]->(chatroom) "+
+		"WITH chatroom MATCH (usr) WHERE ELEMENTID(usr) = $Id "+
+		"MERGE (usr)-[:IN_CHATROOM]->(chatroom) "+
+		"WITH usr, chatroom MERGE (usr)-[:OWNS]->(chatroom) ",
+		map[string]any{
+			"UUID":  UUID,
+			"Name":  name,
+			"Id":    user_node.ElementId,
+			"Users": users,
+		})
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+	return http.StatusOK, nil
+}
