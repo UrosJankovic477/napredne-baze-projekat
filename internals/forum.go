@@ -2,7 +2,6 @@ package internals
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -18,15 +17,22 @@ func CreateForum(token string, name string, interests []string) (int, error) {
 	dict := make(map[string]any)
 	dict["Id"] = user_node.ElementId
 	dict["name"] = name
-	query := ""
-	for idx, interest := range interests {
-		q := fmt.Sprintf("MERGE (interest_%d:Interest{Name:$%d}) ", idx, idx)
-		query += q + fmt.Sprintf("MERGE (f)-[:HOSTS]->(interest_%d) ", idx)
-		dict[fmt.Sprint(idx)] = interest
+	dict["interests"] = interests
+
+	if len(name) == 0 {
+		return http.StatusBadRequest, errors.New("Name cannot be empty")
 	}
+	if len(interests) == 0 {
+		return http.StatusBadRequest, errors.New("Interest list cannot be empty")
+	}
+
 	_, err = doQuery("CREATE (f:Forum{Name:$name}) WITH f "+
 		"MATCH (usr:AccountCredentials) WHERE ELEMENTID(usr) = $Id WITH usr, f MERGE (usr)-[:ACTIVE]->(f) "+
-		query, dict)
+		"WITH f UNWIND $interests AS interest "+
+		"MERGE (i:Interest{Name:interest}) "+
+		"MERGE (f)-[:HOSTS]->(i) ",
+		dict)
+
 	if err != nil {
 		if strings.Contains(err.Error(), "ConstraintValidationFailed") {
 			return http.StatusConflict, errors.New("Forum with that name already exists.")

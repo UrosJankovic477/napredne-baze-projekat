@@ -224,7 +224,7 @@ func addInterestHandler(writer http.ResponseWriter, reqptr *http.Request) {
 }
 
 func removeInterestHandler(writer http.ResponseWriter, reqptr *http.Request) {
-	if reqptr.Method != "DELETE" {
+	if reqptr.Method != "POST" {
 		writer.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -234,13 +234,12 @@ func removeInterestHandler(writer http.ResponseWriter, reqptr *http.Request) {
 		log.Println(err)
 	}
 	deserialized := map[string]string{
-		"UserToken": "",
-		"Interest":  "",
-		"Category":  "",
+		"Token":    "",
+		"Interest": "",
 	}
 	json.Unmarshal(body, &deserialized)
 
-	status, err := internals.AddInterest(deserialized["UserToken"], deserialized["Category"], deserialized["Interest"])
+	status, err := internals.RemoveInterest(deserialized["Token"], deserialized["Interest"])
 	if err != nil {
 		writer.WriteHeader(status)
 		log.Println(err)
@@ -376,7 +375,7 @@ func recommendFriendHandler(writer http.ResponseWriter, reqptr *http.Request) {
 }
 
 func getPostHandler(writer http.ResponseWriter, reqptr *http.Request) {
-	if reqptr.Method != "GET" {
+	if reqptr.Method != "POST" {
 		writer.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -390,9 +389,9 @@ func getPostHandler(writer http.ResponseWriter, reqptr *http.Request) {
 	}
 	json.Unmarshal(body, &deserialized)
 
-	post, err := internals.GetFromRedis(deserialized["UUID"], true)
+	post, status, err := internals.GetPost(deserialized["UUID"])
 	if err != nil {
-		writer.WriteHeader(http.StatusNotFound)
+		writer.WriteHeader(status)
 		log.Println(err)
 	}
 	to_json, err := json.Marshal(post)
@@ -404,7 +403,7 @@ func getPostHandler(writer http.ResponseWriter, reqptr *http.Request) {
 }
 
 func getPostsFromForumHandler(writer http.ResponseWriter, reqptr *http.Request) {
-	if reqptr.Method != "GET" {
+	if reqptr.Method != "POST" {
 		writer.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -437,7 +436,7 @@ func getPostsFromForumHandler(writer http.ResponseWriter, reqptr *http.Request) 
 }
 
 func getCommentsFromPostHandler(writer http.ResponseWriter, reqptr *http.Request) {
-	if reqptr.Method != "GET" {
+	if reqptr.Method != "POST" {
 		writer.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -470,7 +469,7 @@ func getCommentsFromPostHandler(writer http.ResponseWriter, reqptr *http.Request
 }
 
 func getPostsHandler(writer http.ResponseWriter, reqptr *http.Request) {
-	if reqptr.Method != "GET" {
+	if reqptr.Method != "POST" {
 		writer.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -550,7 +549,7 @@ func joinChatRoomHandler(writer http.ResponseWriter, reqptr *http.Request) {
 }
 
 func getUsersChatroomsHandler(writer http.ResponseWriter, reqptr *http.Request) {
-	if reqptr.Method != "GET" {
+	if reqptr.Method != "POST" {
 		writer.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -567,6 +566,87 @@ func getUsersChatroomsHandler(writer http.ResponseWriter, reqptr *http.Request) 
 	chatrooms, status, err := internals.GetUsersChatrooms(deserialized["Token"].(string))
 
 	to_json, err := json.Marshal(chatrooms)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+
+	writer.WriteHeader(status)
+	writer.Write(to_json)
+}
+
+func getFriendsHandler(writer http.ResponseWriter, reqptr *http.Request) {
+	if reqptr.Method != "POST" {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	body, err := io.ReadAll(reqptr.Body)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	deserialized := map[string]any{
+		"Token": "",
+	}
+	json.Unmarshal(body, &deserialized)
+	friends, status, err := internals.GetFriends(deserialized["Token"].(string))
+
+	to_json, err := json.Marshal(friends)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+
+	writer.WriteHeader(status)
+	writer.Write(to_json)
+}
+
+func getFriendRequestsHandler(writer http.ResponseWriter, reqptr *http.Request) {
+	if reqptr.Method != "POST" {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	body, err := io.ReadAll(reqptr.Body)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	deserialized := map[string]any{
+		"Token": "",
+	}
+	json.Unmarshal(body, &deserialized)
+	friendRequests, status, err := internals.GetFriendRequests(deserialized["Token"].(string))
+
+	to_json, err := json.Marshal(friendRequests)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+
+	writer.WriteHeader(status)
+	writer.Write(to_json)
+}
+
+func getInterestsHandler(writer http.ResponseWriter, reqptr *http.Request) {
+	if reqptr.Method != "POST" {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	body, err := io.ReadAll(reqptr.Body)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	deserialized := map[string]any{
+		"Token": "",
+	}
+	json.Unmarshal(body, &deserialized)
+	interests, status, err := internals.GetInterests(deserialized["Token"].(string))
+
+	to_json, err := json.Marshal(interests)
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
 		log.Println(err)

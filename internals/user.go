@@ -1,7 +1,6 @@
 package internals
 
 import (
-	
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
@@ -13,9 +12,7 @@ import (
 	"github.com/alexedwards/argon2id"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/dbtype"
-	
 )
-
 
 var expirationTime = 240.0 // 10 dana sad dok radimo, 1 dan u finalnoj verziji
 
@@ -29,8 +26,6 @@ type AccountCredentials struct {
 	PasswordHash string
 }
 
-
-
 func doQuery(query string, params map[string]any) (*neo4j.EagerResult, error) {
 	return neo4j.ExecuteQuery(ctx, driver, query, params, neo4j.EagerResultTransformer)
 }
@@ -39,6 +34,13 @@ func CreateAccount(username string, password string) error {
 	hash, err := argon2id.CreateHash(password, argon2id.DefaultParams)
 	if err != nil {
 		return err
+	}
+	if len(username) == 0 {
+		return errors.New("Username cannot be empty")
+	}
+
+	if len(password) < 6 {
+		return errors.New("Password must contain at least 6 characers")
 	}
 
 	_, err = doQuery(
@@ -185,9 +187,9 @@ func SendFriendRequest(token string, friendname string) (int, error) {
 	_, err = doQuery("MATCH (usr:AccountCredentials) WHERE ELEMENTID(usr) = $Id "+
 		"MATCH (friend:AccountCredentials) WHERE friend.Username = $Username "+
 		"AND NOT (usr)-[:FRIEND]-(friend) "+
-		"AND NOT (usr)-[:REQUESTS_FRENDSHIP]-(friend) "+
+		"AND NOT (usr)-[:REQUESTS_FRIENDSHIP]-(friend) "+
 		"AND usr <> friend "+
-		"MERGE (usr)-[:REQUESTS_FRENDSHIP]->(friend)", map[string]any{
+		"MERGE (usr)-[:REQUESTS_FRIENDSHIP]->(friend)", map[string]any{
 		"Id":       user_node.ElementId,
 		"Username": friendname,
 	})
@@ -205,7 +207,7 @@ func AcceptRequest(token string, friendname string) (int, error) {
 	}
 	_, err = doQuery("MATCH (usr:AccountCredentials) WHERE ELEMENTID(usr) = $Id "+
 		"MATCH (friend:AccountCredentials) WHERE friend.Username = $Username "+
-		"MATCH (friend)-[r:REQUESTS_FRENDSHIP]->(usr) "+
+		"MATCH (friend)-[r:REQUESTS_FRIENDSHIP]->(usr) "+
 		"DELETE r "+
 		"MERGE (usr)-[:FRIEND]->(friend) ", map[string]any{
 		"Id":       user_node.ElementId,
@@ -226,7 +228,7 @@ func DeclineRequest(token string, friendname string) (int, error) {
 	}
 	_, err = doQuery("MATCH (usr:AccountCredentials) WHERE ELEMENTID(usr) = $Id "+
 		"MATCH (friend:AccountCredentials) WHERE friend.Username = $Username "+
-		"MATCH (friend)-[r:REQUESTS_FRENDSHIP]-(usr) "+
+		"MATCH (friend)-[r:REQUESTS_FRIENDSHIP]-(usr) "+
 		"DELETE r ",
 		map[string]any{
 			"Id":       user_node.ElementId,
@@ -256,4 +258,50 @@ func Unfriend(token string, friendname string) (int, error) {
 		return http.StatusNotFound, err
 	}
 	return http.StatusOK, nil
+}
+
+func GetFriends(token string) ([]string, int, error) {
+	user_node, status, err := GetUserFromToken(token)
+	if err != nil {
+		return nil, status, err
+	}
+
+	result, err := doQuery("MATCH (usr:AccountCredentials) WHERE ELEMENTID(usr) = $Id "+
+		"MATCH (friend)-[:FRIEND]-(usr) "+
+		"RETURN friend.Username AS friend", map[string]any{
+		"Id": user_node.ElementId,
+	})
+	if err != nil {
+		return nil, http.StatusNotFound, err
+	}
+	friend_list := make([]string, 0)
+	for _, record := range result.Records {
+		friend, _ := record.Get("friend")
+		friend_list = append(friend_list, friend.(string))
+	}
+
+	return friend_list, http.StatusOK, nil
+}
+
+func GetFriendRequests(token string) ([]string, int, error) {
+	user_node, status, err := GetUserFromToken(token)
+	if err != nil {
+		return nil, status, err
+	}
+
+	result, err := doQuery("MATCH (usr:AccountCredentials) WHERE ELEMENTID(usr) = $Id "+
+		"MATCH (friend)-[:REQUESTS_FRIENDSHIP]-(usr) "+
+		"RETURN friend.Username AS friend", map[string]any{
+		"Id": user_node.ElementId,
+	})
+	if err != nil {
+		return nil, http.StatusNotFound, err
+	}
+	friend_list := make([]string, 0)
+	for _, record := range result.Records {
+		friend, _ := record.Get("friend")
+		friend_list = append(friend_list, friend.(string))
+	}
+
+	return friend_list, http.StatusOK, nil
 }

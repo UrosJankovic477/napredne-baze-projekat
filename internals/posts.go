@@ -12,12 +12,15 @@ type Post struct {
 	Author       string
 	Title        string
 	Body         string
+	UUID         string
+	PostedOn     int64
 	CommentCount int64
 }
 
 type Comment struct {
-	Author string
-	Body   string
+	Author   string
+	Body     string
+	PostedOn int64
 }
 
 func AddToRedis(UUID string, body string, isPost bool) error {
@@ -50,7 +53,7 @@ func GetFromRedis(UUID string, isPost bool) (string, error) {
 func GetMultiplePostsFromForum(forum_name string, count int, offset int) ([]Post, int, error) {
 	result, err := doQuery("MATCH (forum:Forum) WHERE forum.Name = $forum_name "+
 		"WITH forum MATCH (posts:Post) WHERE (forum)-[:HAS_POST]->(posts) "+
-		"WITH posts ORDER BY posts.PostedOn"+
+		"WITH posts ORDER BY posts.PostedOn "+
 		"OPTIONAL MATCH (posts)-[r:HAS_COMMENT]->(comment) "+
 		"WITH posts, COUNT(r) AS comment_count ORDER BY comment_count "+
 		"MATCH (posts)-[posted_by:POSTED_BY]-(author:AccountCredentials) "+
@@ -63,21 +66,23 @@ func GetMultiplePostsFromForum(forum_name string, count int, offset int) ([]Post
 	if err != nil {
 		return nil, http.StatusInternalServerError, err
 	}
-	posts := make([]Post, count)
+	posts := make([]Post, 0)
 	for _, record := range result.Records {
 		post_node, _ := record.Get("posts")
 		author, _ := record.Get("author")
 		comment_count, _ := record.Get("comment_count")
 		title := post_node.(dbtype.Node).Props["Title"]
 		UUID := post_node.(dbtype.Node).Props["UUID"]
-		body, err := GetFromRedis(UUID.(string), true)
-		if err != nil {
-			return nil, http.StatusNotFound, err
-		}
+		PostedOn := post_node.(dbtype.Node).Props["PostedOn"]
+		//body, err := GetFromRedis(UUID.(string), true)
+		//if err != nil {
+		//	return nil, http.StatusNotFound, err
+		//}
 		posts = append(posts, Post{
 			Title:        title.(string),
 			Author:       author.(string),
-			Body:         body,
+			UUID:         UUID.(string),
+			PostedOn:     PostedOn.(int64),
 			CommentCount: comment_count.(int64)})
 	}
 	return posts, http.StatusOK, nil
@@ -86,7 +91,7 @@ func GetMultiplePostsFromForum(forum_name string, count int, offset int) ([]Post
 func GetCommentsFromPost(UUID string, count int, offset int) ([]Comment, int, error) {
 	result, err := doQuery("MATCH (post:Post) WHERE post.UUID = $UUID "+
 		"WITH post MATCH (comments:Comment) WHERE (post)-[:HAS_COMMENT]->(comments) "+
-		"WITH comments ORDER BY comments.PostedOn"+
+		"WITH comments ORDER BY comments.PostedOn "+
 		"MATCH (comments)-[posted_by:POSTED_BY]-(author:AccountCredentials) "+
 		"RETURN comments, author.Username AS author SKIP $offset LIMIT $count ",
 		map[string]any{
@@ -97,22 +102,61 @@ func GetCommentsFromPost(UUID string, count int, offset int) ([]Comment, int, er
 	if err != nil {
 		return nil, http.StatusInternalServerError, err
 	}
-	comments := make([]Comment, count)
+	comments := make([]Comment, 0)
 	for _, record := range result.Records {
 		comment_node, _ := record.Get("comments")
 		author, _ := record.Get("author")
 		UUID := comment_node.(dbtype.Node).Props["UUID"]
+		PostedOn := comment_node.(dbtype.Node).Props["PostedOn"]
 		body, err := GetFromRedis(UUID.(string), false)
 		if err != nil {
 			return nil, http.StatusNotFound, err
 		}
 		comments = append(comments, Comment{
-			Author: author.(string),
-			Body:   body})
+			Author:   author.(string),
+			PostedOn: PostedOn.(int64),
+			Body:     body})
 	}
 
 	return comments, http.StatusOK, nil
 
+}
+
+func GetPost(UUID string) (Post, int, error) {
+	result, err := doQuery("MATCH (post) WHERE post.UUID = $UUID "+
+		"WITH post "+
+		"OPTIONAL MATCH (post)-[r:HAS_COMMENT]->(comment) "+
+		"WITH post, COUNT(r) AS comment_count ORDER BY comment_count "+
+		"MATCH (post)-[posted_by:POSTED_BY]-(author:AccountCredentials) "+
+		"RETURN post, author.Username AS author, comment_count",
+		map[string]any{
+			"UUID": UUID,
+		})
+	if err != nil {
+		return Post{}, http.StatusInternalServerError, err
+	}
+
+	body, err := GetFromRedis(UUID, true)
+	if err != nil {
+		return Post{}, http.StatusInternalServerError, err
+	}
+
+	record := result.Records[0]
+	post_node, _ := record.Get("post")
+	author, _ := record.Get("author")
+	comment_count, _ := record.Get("comment_count")
+	title := post_node.(dbtype.Node).Props["Title"]
+	PostedOn := post_node.(dbtype.Node).Props["PostedOn"]
+
+	post := Post{
+		Title:        title.(string),
+		Author:       author.(string),
+		Body:         body,
+		PostedOn:     PostedOn.(int64),
+		UUID:         UUID,
+		CommentCount: comment_count.(int64)}
+
+	return post, http.StatusOK, nil
 }
 
 func GetPosts(token string, count int, offset int) ([]Post, int, error) {
@@ -152,14 +196,16 @@ func GetPosts(token string, count int, offset int) ([]Post, int, error) {
 			comment_count, _ := record.Get("comment_count")
 			title := post_node.(dbtype.Node).Props["Title"]
 			UUID := post_node.(dbtype.Node).Props["UUID"]
-			body, err := GetFromRedis(UUID.(string), true)
-			if err != nil {
-				return nil, http.StatusNotFound, err
-			}
+			PostedOn := post_node.(dbtype.Node).Props["PostedOn"]
+			//body, err := GetFromRedis(UUID.(string), true)
+			//if err != nil {
+			//	return nil, http.StatusNotFound, err
+			//}
 			posts = append(posts, Post{
 				Title:        title.(string),
 				Author:       author.(string),
-				Body:         body,
+				UUID:         UUID.(string),
+				PostedOn:     PostedOn.(int64),
 				CommentCount: comment_count.(int64)})
 		}
 

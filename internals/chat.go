@@ -53,6 +53,7 @@ func GetMessages(UUID string) ([]Message, error) {
 	}
 	stream := gtrs.NewStream[Message](rdb, UUID, &gtrs.Options{TTL: gtrs.NoExpiration, MaxLen: 10000, Approx: true})
 	gtrs_msgs, err := stream.Range(ctx, "-", "+")
+
 	msgs := make([]Message, 0)
 
 	for _, msg := range gtrs_msgs {

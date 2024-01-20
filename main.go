@@ -33,6 +33,9 @@ func main() {
 	router.HandleFunc("/api/getPosts", getPostsHandler)
 	router.HandleFunc("/api/makeChatRoom", makeChatRoomHandler)
 	router.HandleFunc("/api/getUsersChatrooms", getUsersChatroomsHandler)
+	router.HandleFunc("/api/getFriends", getFriendsHandler)
+	router.HandleFunc("/api/getFriendRequests", getFriendRequestsHandler)
+	router.HandleFunc("/api/getInterests", getInterestsHandler)
 
 	router.Handle("/", http.FileServer(http.Dir("wwwroot")))
 

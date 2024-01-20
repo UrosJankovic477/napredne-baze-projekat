@@ -29,10 +29,15 @@ func (h *ChatHub) OnDisconnected(connectionID string) {
 	fmt.Printf("%s disconnected\n", connectionID)
 }
 
-func (h *ChatHub) SendMessage(user string, message string, UUID string) {
+func (h *ChatHub) SendMessage(token string, message string, UUID string) {
 	//	fmt.Println(message)
+	user_node, _, err := GetUserFromToken(token)
+	if err != nil {
+		return
+	}
+	username := user_node.Props["Username"]
 	SendMessageToStream(Message{
-		Username: user,
+		Username: username.(string),
 		Content:  message,
 		Time:     time.Now().Unix()},
 		UUID)
@@ -44,9 +49,7 @@ func (h *ChatHub) JoinChat(UUID string) {
 	if err != nil {
 		return
 	}
-	for _, msg := range msgs {
-		h.Clients().Caller().Send("ReceiveMessage", msg.Username, msg.Content, msg.Time)
-	}
+	h.Clients().Caller().Send("ReceiveMessageList", msgs)
 
 }
 
