@@ -200,7 +200,7 @@ func RecommendFriendByFriends(user_id string) (map[string]FriendRecommendation, 
 }
 
 func RecommendFriendByInterests(user_id string) (map[string]FriendRecommendation, error) {
-	result, err := doQuery("MATCH (usr) WHERE ID(usr) = 0 "+
+	result, err := doQuery("MATCH (usr) WHERE ELEMENTID(usr) = $Id "+
 		"MATCH (interests:Interest) "+
 		"WHERE (usr)-[:INTERESTED_IN]-(interests) "+
 		"WITH interests, usr "+

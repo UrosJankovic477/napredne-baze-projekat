@@ -21,6 +21,7 @@ login.onclick = () => {
       .then(response => response.text())
       .then(result => {
         document.cookie = `token=${JSON.parse(result)}`;
+        window.location.href = "/mainpage.html"
       })
       .catch(error => console.log('error', error));
 }
@@ -30,9 +31,10 @@ signin.onclick = () => {
     var myHeaders = new Headers();
     myHeaders.append("Content-Type", "application/json");
 
+
     var raw = JSON.stringify({
       "Username": username.value,
-      "Password": password.value
+      "PasswordHash": password.value
     });
 
     var requestOptions = {

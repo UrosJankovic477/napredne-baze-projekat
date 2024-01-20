@@ -155,7 +155,7 @@ func acceptRequestHandler(writer http.ResponseWriter, reqptr *http.Request) {
 }
 
 func declineRequestHandler(writer http.ResponseWriter, reqptr *http.Request) {
-	if reqptr.Method != "DELETE" {
+	if reqptr.Method != "POST" {
 		writer.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
