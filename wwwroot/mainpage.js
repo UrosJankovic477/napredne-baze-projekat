@@ -379,3 +379,99 @@ let friendrequestdiv = document.querySelector("div#friendrequestsdiv")
 
     
  }
+let opt = undefined;
+let searchopts = document.getElementById("searchopts");
+searchopts.onchange = (event) => {
+  opt = event.target.value;
+}
+let searchbar = document.getElementById("searchbar");
+let searchbtn = document.getElementById("searchbtn");
+searchbtn.onclick = () => {
+  let searchquery = searchbar.value;
+  var myHeaders = new Headers();
+  myHeaders.append("Content-Type", "application/json");
+  
+  var raw = JSON.stringify({
+    "SearchQuery": searchquery
+  });
+  
+  var requestOptions = {
+    method: 'POST',
+    headers: myHeaders,
+    body: raw,
+    redirect: 'follow'
+  };
+
+  results.innerHTML = "";
+  if (opt === "searchPosts") {
+    fetch(`/api/${opt}`, requestOptions)
+    .then(response => response.json())
+    .then(result => result.forEach(res => {
+      let li = document.createElement("li");
+      let datum = new Date(res.PostedOn * 1000).toLocaleDateString("sr-RS");
+      let vreme = new Date(res.PostedOn * 1000).toLocaleTimeString("sr-RS");
+
+      li.innerHTML = `Posted by: ${res.Author}, at: ${datum} : ${vreme}`;
+      let a = document.createElement("a");
+      let br = document.createElement("br");
+      li.appendChild(br);
+      a.innerHTML = res.Title;
+      a.href = `post.html#${res.UUID}`;
+      li.appendChild(a);
+
+      results.appendChild(li);
+    }))
+    .catch(error => console.log('error', error));
+  }
+  else if(opt === "searchForums") {
+    fetch(`/api/${opt}`, requestOptions)
+    .then(response => response.json())
+    .then(result => result.forEach(res => {
+      let li = document.createElement("li");
+
+      let a = document.createElement("a");
+      a.innerHTML = res;
+      a.href = `forum.html#${res}`;
+      li.appendChild(a);
+
+      results.appendChild(li);
+    }))
+    .catch(error => console.log('error', error));
+  }
+  else if (opt === "searchUsers") {
+    fetch(`/api/${opt}`, requestOptions)
+    .then(response => response.json())
+    .then(result => result.forEach(res => {
+      let li = document.createElement("li");
+      li.innerHTML = res;
+      let btn = document.createElement("button");
+      btn.innerHTML = "Send Friend Request";
+
+      btn.onclick = () => {
+    
+        var myHeaders = new Headers();
+        myHeaders.append("Content-Type", "application/json");
+
+        var raw = JSON.stringify({
+          "UserToken": token,
+          "FriendName": res
+        });
+
+        var requestOptions = {
+          method: 'POST',
+          headers: myHeaders,
+          body: raw,
+          redirect: 'follow'
+        };
+
+        fetch("/api/friendRequest", requestOptions)
+          .then(response => response.text())
+          .then(result => console.log(result))
+          .catch(error => console.log('error', error));
+    }
+    li.appendChild(btn);
+    results.appendChild(li);
+    }))
+    .catch(error => console.log('error', error));
+  }
+}

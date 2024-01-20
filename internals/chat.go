@@ -1,8 +1,11 @@
 package internals
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/dranikpg/gtrs"
@@ -117,4 +120,27 @@ func GetUsersChatrooms(token string) ([]Chatroom, int, error) {
 	}
 
 	return chatrooms, http.StatusOK, nil
+}
+
+func UploadImage(img_bytes []byte) (string, int, error) {
+	if !strings.Contains(http.DetectContentType(img_bytes), "image") {
+		return "", http.StatusUnsupportedMediaType, errors.ErrUnsupported
+	}
+
+	hash_bytes := sha256.Sum256(img_bytes)
+	hash := hex.EncodeToString(hash_bytes[:])
+
+	err := rdb.HSetNX(ctx, "images", hash, img_bytes).Err()
+	if err != nil {
+		return "", http.StatusInternalServerError, err
+	}
+	return hash, http.StatusOK, nil
+}
+
+func GetImage(hash string) ([]byte, int, error) {
+	result, err := rdb.HGet(ctx, "images", hash).Bytes()
+	if err != nil {
+		return nil, http.StatusNotFound, err
+	}
+	return result, http.StatusOK, nil
 }

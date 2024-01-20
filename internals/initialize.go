@@ -31,6 +31,9 @@ func (h *ChatHub) OnDisconnected(connectionID string) {
 
 func (h *ChatHub) SendMessage(token string, message string, UUID string) {
 	//	fmt.Println(message)
+	if message == "" {
+		return
+	}
 	user_node, _, err := GetUserFromToken(token)
 	if err != nil {
 		return

@@ -13,6 +13,7 @@ type Post struct {
 	Title        string
 	Body         string
 	UUID         string
+	ForumName    string
 	PostedOn     int64
 	CommentCount int64
 }
@@ -163,36 +164,27 @@ func GetPosts(token string, count int, offset int) ([]Post, int, error) {
 	_, _, err := GetUserFromToken(token)
 	if err != nil {
 		// preporuci nepersonalizovane postove
-		return nil, http.StatusNotImplemented, err
-	}
 
-	forums, status, err := RecommendForums(token)
-	if err != nil {
-		return nil, status, err
-	}
-
-	posts := make([]Post, 0)
-	var result *neo4j.EagerResult
-	for _, forum := range forums {
-		result, err = doQuery("MATCH (forum:Forum) WHERE forum.Name = $forum_name "+
-			"WITH forum MATCH (posts:Post) WHERE (forum)-[:HAS_POST]->(posts) "+
-			"WITH posts ORDER BY posts.PostedOn "+
+		result, err := doQuery("MATCH (posts:Post) WITH posts "+
+			"MATCH (forum:Forum) WHERE (forum:Forum)-[:HAS_POST]->(posts) "+
+			"WITH posts, forum ORDER BY posts.PostedOn "+
 			"OPTIONAL MATCH (posts)-[r:HAS_COMMENT]->(comment) "+
-			"WITH posts, COUNT(r) AS comment_count ORDER BY comment_count "+
+			"WITH posts, forum, COUNT(r) AS comment_count ORDER BY comment_count "+
 			"MATCH (posts)-[posted_by:POSTED_BY]-(author:AccountCredentials) "+
-			"RETURN posts, author.Username AS author, comment_count SKIP $offset LIMIT $count ",
+			"RETURN posts, forum.Name AS forum_name, author.Username AS author, comment_count SKIP $offset LIMIT $count ",
 			map[string]any{
-				"forum_name": forum.Name,
-				"count":      count,
-				"offset":     offset,
+				"count":  count,
+				"offset": offset,
 			})
 		if err != nil {
 			return nil, http.StatusInternalServerError, err
 		}
+		posts := make([]Post, 0)
 
 		for _, record := range result.Records {
 			post_node, _ := record.Get("posts")
 			author, _ := record.Get("author")
+			forum_name, _ := record.Get("forum_name")
 			comment_count, _ := record.Get("comment_count")
 			title := post_node.(dbtype.Node).Props["Title"]
 			UUID := post_node.(dbtype.Node).Props["UUID"]
@@ -206,7 +198,58 @@ func GetPosts(token string, count int, offset int) ([]Post, int, error) {
 				Author:       author.(string),
 				UUID:         UUID.(string),
 				PostedOn:     PostedOn.(int64),
-				CommentCount: comment_count.(int64)})
+				CommentCount: comment_count.(int64),
+				ForumName:    forum_name.(string),
+			})
+		}
+
+		return posts, http.StatusOK, err
+	}
+
+	forums, status, err := RecommendForums(token)
+	if err != nil {
+		return nil, status, err
+	}
+
+	posts := make([]Post, 0)
+	var result *neo4j.EagerResult
+	for _, forum := range forums {
+		result, err = doQuery("MATCH (forum:Forum) WHERE forum.Name = $forum_name "+
+			"WITH forum MATCH (posts:Post) WHERE (forum)-[:HAS_POST]->(posts) "+
+			"WITH posts, forum ORDER BY posts.PostedOn "+
+			"OPTIONAL MATCH (posts)-[r:HAS_COMMENT]->(comment) "+
+			"WITH posts, forum, COUNT(r) AS comment_count ORDER BY comment_count "+
+			"MATCH (posts)-[posted_by:POSTED_BY]-(author:AccountCredentials) "+
+			"RETURN posts, forum.Name AS forum_name, author.Username AS author, comment_count SKIP $offset LIMIT $count ",
+			map[string]any{
+				"forum_name": forum.Name,
+				"count":      count,
+				"offset":     offset,
+			})
+		if err != nil {
+			return nil, http.StatusInternalServerError, err
+		}
+
+		for _, record := range result.Records {
+			post_node, _ := record.Get("posts")
+			author, _ := record.Get("author")
+			forum_name, _ := record.Get("forum_name")
+			comment_count, _ := record.Get("comment_count")
+			title := post_node.(dbtype.Node).Props["Title"]
+			UUID := post_node.(dbtype.Node).Props["UUID"]
+			PostedOn := post_node.(dbtype.Node).Props["PostedOn"]
+			//body, err := GetFromRedis(UUID.(string), true)
+			//if err != nil {
+			//	return nil, http.StatusNotFound, err
+			//}
+			posts = append(posts, Post{
+				Title:        title.(string),
+				Author:       author.(string),
+				UUID:         UUID.(string),
+				PostedOn:     PostedOn.(int64),
+				CommentCount: comment_count.(int64),
+				ForumName:    forum_name.(string),
+			})
 		}
 
 	}

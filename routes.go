@@ -6,6 +6,7 @@ import (
 	"log"
 	"napredne_baze_podataka/internals"
 	"net/http"
+	"strings"
 )
 
 type login_struct struct {
@@ -654,4 +655,129 @@ func getInterestsHandler(writer http.ResponseWriter, reqptr *http.Request) {
 
 	writer.WriteHeader(status)
 	writer.Write(to_json)
+}
+
+func searchForumsHandler(writer http.ResponseWriter, reqptr *http.Request) {
+	if reqptr.Method != "POST" {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	body, err := io.ReadAll(reqptr.Body)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	deserialized := map[string]any{
+		"SearchQuery": "",
+	}
+	json.Unmarshal(body, &deserialized)
+	interests, status, err := internals.SearchForums(deserialized["SearchQuery"].(string))
+
+	to_json, err := json.Marshal(interests)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+
+	writer.WriteHeader(status)
+	writer.Write(to_json)
+}
+
+func searchUsersHandler(writer http.ResponseWriter, reqptr *http.Request) {
+	if reqptr.Method != "POST" {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	body, err := io.ReadAll(reqptr.Body)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	deserialized := map[string]any{
+		"SearchQuery": "",
+	}
+	json.Unmarshal(body, &deserialized)
+	interests, status, err := internals.SearchUsers(deserialized["SearchQuery"].(string))
+
+	to_json, err := json.Marshal(interests)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+
+	writer.WriteHeader(status)
+	writer.Write(to_json)
+}
+
+func searchPostsHandler(writer http.ResponseWriter, reqptr *http.Request) {
+	if reqptr.Method != "POST" {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	body, err := io.ReadAll(reqptr.Body)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+	deserialized := map[string]any{
+		"SearchQuery": "",
+	}
+	json.Unmarshal(body, &deserialized)
+	interests, status, err := internals.SearchPosts(deserialized["SearchQuery"].(string))
+
+	to_json, err := json.Marshal(interests)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+
+	writer.WriteHeader(status)
+	writer.Write(to_json)
+}
+
+func uploadImageHandler(writer http.ResponseWriter, reqptr *http.Request) {
+	if reqptr.Method != "POST" {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	body, err := io.ReadAll(reqptr.Body)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+
+	interests, status, err := internals.UploadImage(body)
+
+	to_json, err := json.Marshal(interests)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+
+	writer.WriteHeader(status)
+	writer.Write(to_json)
+}
+
+func getImageHandler(writer http.ResponseWriter, reqptr *http.Request) {
+	if reqptr.Method != "GET" {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	hash := strings.TrimPrefix(reqptr.URL.Path, "/api/getImage/")
+
+	image, status, err := internals.GetImage(hash)
+
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+	}
+
+	writer.WriteHeader(status)
+	writer.Header().Add("Content-Type", http.DetectContentType(image))
+	writer.Write(image)
 }

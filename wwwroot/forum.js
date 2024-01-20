@@ -27,8 +27,8 @@ window.onload = () => {
       .then(result => result.forEach(post => {
         let li = document.createElement("li");
 
-        let datum = new Date(comment.PostedOn * 1000).toLocaleDateString("sr-RS");
-        let vreme = new Date(comment.PostedOn * 1000).toLocaleTimeString("sr-RS");
+        let datum = new Date(post.PostedOn * 1000).toLocaleDateString("sr-RS");
+        let vreme = new Date(post.PostedOn * 1000).toLocaleTimeString("sr-RS");
 
         li.innerHTML =  `Posted by: ${post.Author}, at: ${datum} : ${vreme}`;
         let br = document.createElement("br");

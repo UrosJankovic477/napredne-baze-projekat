@@ -36,6 +36,11 @@ func main() {
 	router.HandleFunc("/api/getFriends", getFriendsHandler)
 	router.HandleFunc("/api/getFriendRequests", getFriendRequestsHandler)
 	router.HandleFunc("/api/getInterests", getInterestsHandler)
+	router.HandleFunc("/api/searchForums", searchForumsHandler)
+	router.HandleFunc("/api/searchPosts", searchPostsHandler)
+	router.HandleFunc("/api/searchUsers", searchUsersHandler)
+	router.HandleFunc("/api/uploadImage", uploadImageHandler)
+	router.HandleFunc("/api/getImage/", getImageHandler)
 
 	router.Handle("/", http.FileServer(http.Dir("wwwroot")))
 

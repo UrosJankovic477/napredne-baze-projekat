@@ -3,7 +3,21 @@
 let token = document.cookie.replace("token=", "");
 let connection = new signalR.HubConnectionBuilder().withUrl("api/chat").build();
 let myHeaders = new Headers();
+let upload_img_btn = document.getElementById("upload_img_btn");
+let current_img_hash = undefined;
+let img_upload = document.createElement("input");
 myHeaders.append("Content-Type", "application/json");
+img_upload.onsubmit = (e) => {
+  e.preventDefault()
+}
+upload_img_btn.onclick = () => {
+
+  
+  img_upload.type = "file";
+  img_upload.click()
+
+ 
+}
 
 let chatrooms = undefined;
 let currentChatroomUUID
@@ -73,17 +87,42 @@ window.onload = () => {
 document.getElementById("sendButton").disabled = true;
 
 connection.on("ReceiveMessage", function (user, message, time) {
-    var li = document.createElement("li");
-    document.getElementById("messagesList").appendChild(li);
+  let idx = message.lastIndexOf(" EMBED-IMAGE:")
+  if (idx != -1) {
+    let embed_string = message.substring(idx)
+    if (embed_string != undefined) {
+    let img = document.createElement("img");
+    let replaced = embed_string.replace(" EMBED-IMAGE:", "")
+    img.src = `/api/getImage/${replaced}`
+    document.getElementById("messagesList").appendChild(img)
+    message = message.replace(embed_string, "")
+    }
+  }
+  
 
-    let datum = new Date(time * 1000).toLocaleDateString("sr-RS");
-    let vreme = new Date(time * 1000).toLocaleTimeString("sr-RS");
-
-    li.textContent = `${user} says ${message} at ${datum} : ${vreme}`;
+  var li = document.createElement("li");
+  document.getElementById("messagesList").appendChild(li);
+  let datum = new Date(time * 1000).toLocaleDateString("sr-RS");
+  let vreme = new Date(time * 1000).toLocaleTimeString("sr-RS");
+  li.textContent = `${user} says ${message} at ${datum} : ${vreme}`;
 });
 
 connection.on("ReceiveMessageList", function (msgs) {
   msgs.forEach(msg => {
+    
+    let idx = msg.Content.lastIndexOf(" EMBED-IMAGE:")
+    if (idx != -1) {
+      let embed_string = msg.Content.substring(idx)
+      if (embed_string != undefined) {
+      let img = document.createElement("img");
+      let replaced = embed_string.replace(" EMBED-IMAGE:", "")
+      img.src = `/api/getImage/${replaced}`
+      document.getElementById("messagesList").appendChild(img)
+      msg.Content = msg.Content.replace(embed_string, "")
+      }
+    }
+  
+
     var li = document.createElement("li");
     document.getElementById("messagesList").appendChild(li);
 
@@ -150,10 +189,40 @@ document.getElementById("makeChatRoom").addEventListener("click", function (even
 
 
 document.getElementById("sendButton").addEventListener("click", function (event) {
+    
     var message = document.getElementById("messageInput").value;
-    connection.invoke("SendMessage", token, message, currentChatroomUUID).catch(function (err) {
+    if (img_upload.value !== "") {
+    //  img_upload.remove()
+    var requestOptions = {
+      method: 'POST',
+      headers: myHeaders,
+      redirect: 'follow'
+    };
+  
+    requestOptions.body = img_upload.files[0]
+    
+    fetch("/api/uploadImage", requestOptions)
+    .then(response => response.json())
+    .then(result => {
+      message += ` EMBED-IMAGE:${result}`
+      img_upload.value = ""
+      connection.invoke("SendMessage", token, message, currentChatroomUUID).catch(function (err) {
         return console.error(err.toString());
     });
+    })
+    .catch(error => console.error(error))
+
+
+    }
+    else {
+      connection.invoke("SendMessage", token, message, currentChatroomUUID).catch(function (err) {
+        return console.error(err.toString());
+    });
+    }
+
+    
+    
+    
     event.preventDefault();
 });
 
